@@ -6,6 +6,9 @@
 
 #ifdef OLED_RU
 #include "graphics/fonts/OLEDDisplayFontsRU.h"
+#ifdef OLED_RU_TER_U16
+#include "graphics/fonts/TerU16RU.h"
+#endif
 #endif
 
 #ifdef OLED_UA
@@ -52,7 +55,11 @@
 #define FONT_MEDIUM_LOCAL ArialMT_Plain_16_PL // Height: 19
 #else
 #ifdef OLED_RU
+#ifdef OLED_RU_TER_U16
+#define FONT_MEDIUM_LOCAL TerU16n_RU // Height: 16
+#else
 #define FONT_MEDIUM_LOCAL ArialMT_Plain_16_RU // Height: 19
+#endif
 #else
 #ifdef OLED_UA
 #define FONT_MEDIUM_LOCAL ArialMT_Plain_16_UA // Height: 19
