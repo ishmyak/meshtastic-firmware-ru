@@ -52,8 +52,8 @@ static inline size_t utf8CharLenClamped(const char *s, size_t pos, size_t len)
 
 static inline bool isPossibleEmoteLead(uint8_t c)
 {
-    // All supported emoji labels in emotes.cpp are currently in these UTF-8 lead ranges.
-    return c == 0xE2 || c == 0xF0;
+    // Keycap sequences begin with an ASCII digit, '#' or '*'.
+    return (c >= '0' && c <= '9') || c == '#' || c == '*' || c == 0xCE || c == 0xCF || c == 0xE2 || c == 0xF0;
 }
 
 static inline int getUtf8ChunkWidth(OLEDDisplay *display, const char *text, size_t len)

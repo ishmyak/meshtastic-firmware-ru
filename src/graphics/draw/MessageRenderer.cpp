@@ -20,6 +20,8 @@
 #include "main.h"
 #include "meshUtils.h"
 #include "modules/CannedMessageModule.h"
+#include <algorithm>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -1030,41 +1032,60 @@ std::vector<std::string> generateLines(OLEDDisplay *display, const char *headerS
         lines.push_back(std::string(headerStr));
     }
 
-    std::string line, word;
-    for (int i = 0; messageBuf[i]; ++i) {
-        char ch = messageBuf[i];
-        if ((unsigned char)messageBuf[i] == 0xE2 && (unsigned char)messageBuf[i + 1] == 0x80 &&
-            (unsigned char)messageBuf[i + 2] == 0x99) {
-            ch = '\''; // plain apostrophe
-            i += 2;    // skip over the extra UTF-8 bytes
-        }
-        if (ch == '\n') {
-            if (!word.empty())
-                line += word;
-            if (!line.empty())
-                lines.push_back(line);
-            line.clear();
-            word.clear();
-        } else if (ch == ' ') {
-            line += word + ' ';
-            word.clear();
-        } else {
-            word += ch;
-            std::string test = line + word;
-            uint16_t strWidth = graphics::UIRenderer::measureStringWithEmotes(display, test.c_str());
-            if (strWidth > textWidth) {
-                if (!line.empty())
-                    lines.push_back(line);
-                line = word;
-                word.clear();
-            }
-        }
-    }
+    if (!messageBuf)
+        return lines;
 
-    if (!word.empty())
-        line += word;
-    if (!line.empty())
-        lines.push_back(line);
+    const auto tokenLength = [](const char *text, size_t length, size_t pos) {
+        size_t matchedLength = 0;
+        if (graphics::EmoteRenderer::findEmoteAt(text, length, pos, matchedLength))
+            return matchedLength;
+        return std::min(graphics::EmoteRenderer::utf8CharLen(static_cast<uint8_t>(text[pos])), length - pos);
+    };
+
+    std::string line, word;
+    const auto emitLine = [&]() {
+        while (!line.empty() && line.back() == ' ')
+            line.pop_back();
+        if (!line.empty())
+            lines.push_back(line);
+        line.clear();
+    };
+    const auto appendWord = [&]() {
+        if (word.empty())
+            return;
+        if (!line.empty() && graphics::UIRenderer::measureStringWithEmotes(display, (line + word).c_str()) > textWidth)
+            emitLine();
+        for (size_t pos = 0; pos < word.size();) {
+            // A long word may wrap, but an emoji sequence or UTF-8 code point must stay intact.
+            const size_t length = tokenLength(word.c_str(), word.size(), pos);
+            const std::string token = word.substr(pos, length);
+            if (!line.empty() && graphics::UIRenderer::measureStringWithEmotes(display, (line + token).c_str()) > textWidth)
+                emitLine();
+            line += token;
+            pos += length;
+        }
+        word.clear();
+    };
+
+    const size_t messageLength = std::strlen(messageBuf);
+    for (size_t pos = 0; pos < messageLength;) {
+        const size_t length = tokenLength(messageBuf, messageLength, pos);
+        const char ch = messageBuf[pos];
+        if (ch == '\n') {
+            appendWord();
+            emitLine();
+        } else if (ch == ' ') {
+            appendWord();
+            line += ' ';
+        } else if (length == 3 && std::memcmp(messageBuf + pos, "\xE2\x80\x99", 3) == 0) {
+            word += '\'';
+        } else {
+            word.append(messageBuf + pos, length);
+        }
+        pos += length;
+    }
+    appendWord();
+    emitLine();
 
     return lines;
 }

@@ -395,7 +395,7 @@ class Screen : public concurrency::OSThread
         // UTF-8 to font table index converter
         // Code from http://playground.arduino.cc/Main/Utf8ascii
         static uint8_t LASTCHAR;
-        static bool SKIPREST; // Only display a single unconvertable-character symbol per sequence of unconvertable characters
+        static bool SKIPREST; // Emit one placeholder per unsupported UTF-8 code point.
 
         if (ch < 128) { // Standard ASCII-set 0..0x7F handling
             LASTCHAR = 0;
@@ -405,6 +405,8 @@ class Screen : public concurrency::OSThread
 
         uint8_t last = LASTCHAR; // get last char
         LASTCHAR = ch;
+        if ((ch & 0xC0) == 0xC0)
+            SKIPREST = false;
 
         switch (last) {
         case 0xC2: {
@@ -629,14 +631,12 @@ class Screen : public concurrency::OSThread
 
 #endif
 
-        // If we already returned an unconvertable-character symbol for this unconvertable-character sequence, return NULs for the
-        // rest of it
+        // Skip continuation bytes after emitting the placeholder.
         if (SKIPREST)
             return (uint8_t)0;
         SKIPREST = true;
 
-        return (uint8_t)191; // otherwise: return ¿ if character can't be converted (note that the font map we're using doesn't
-                             // stick to standard EASCII codes)
+        return '?'; // ASCII is available in every localized font, unlike slot 191.
     }
 
     // Handle observer events

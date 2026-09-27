@@ -251,12 +251,14 @@ void drawCommonHeader(OLEDDisplay *display, int16_t x, int16_t y, const char *ti
 #endif
 
     int batteryX = x + 1 + BASEUI_HEADER_LR_MARGIN;
-    int batteryY = HEADER_OFFSET_Y + 1 + BASEUI_HEADER_MARGIN / 2;
 #if !defined(OLED_TINY)
+    const bool showUsbIcon = usbPowered && !isCharging;
+    const int batteryHeight = showUsbIcon ? (currentResolution == ScreenResolution::High ? 12 : 8)
+                                         : (useHorizontalBattery ? 13 : 11);
+    const int batteryY = y + (highlightHeight - batteryHeight) / 2;
     // === Battery Icons ===
-    if (usbPowered && !isCharging) { // This is a basic check to determine USB Powered is flagged but not charging
+    if (showUsbIcon) {
         batteryX += 1;
-        batteryY += 2;
         if (currentResolution == ScreenResolution::High) {
             display->drawXbm(batteryX, batteryY, 19, 12, imgUSB_HighResolution);
             batteryX += 20; // Icon + 1 pixel
@@ -267,7 +269,6 @@ void drawCommonHeader(OLEDDisplay *display, int16_t x, int16_t y, const char *ti
     } else {
         if (useHorizontalBattery) {
             batteryX += 1;
-            batteryY += 2;
             display->drawXbm(batteryX, batteryY, 9, 13, batteryBitmap_h_bottom);
             display->drawXbm(batteryX + 9, batteryY, 9, 13, batteryBitmap_h_top);
             if (isCharging && isBoltVisibleShared)
@@ -289,9 +290,6 @@ void drawCommonHeader(OLEDDisplay *display, int16_t x, int16_t y, const char *ti
             }
             batteryX += 18; // Icon + 2 pixels
         } else {
-#ifdef USE_EINK
-            batteryY += 2;
-#endif
             display->drawXbm(batteryX, batteryY, 7, 11, batteryBitmap_v);
             if (isCharging && isBoltVisibleShared)
                 display->drawXbm(batteryX + 1, batteryY + 3, 5, 5, lightning_bolt_v);
